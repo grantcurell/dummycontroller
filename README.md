@@ -24,6 +24,11 @@
     C:\Users\grant\Documents\dummycontroller>python --version
     Python 3.7.0
 
+### Ryu Version
+
+    C:\Users\grant\Documents\dummycontroller>ryu --version
+    ryu 4.32
+
 ## Setup
 
 ### Setup Controller
