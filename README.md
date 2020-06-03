@@ -1,18 +1,10 @@
-# Create OpenFlow Load Balancer
-
-## Reading Material
-
-[Open Flow Switch Specification v1.3.1](./Reading_Material/openflow-spec-v1.3.1.pdf)
-
-[Dell OpenFlow Deployment and User Guide 3.0](https://topics-cdn.dell.com/pdf/force10-sw-defined-ntw_deployment-guide3_en-us.pdf)
-
-[OS10 Setup Instructions](./Reading_Material/force10-s3048-on_connectivity-guide4_en-us.pdf)
+# Dummy Controller
 
 ## Overview
 
 ## My Configuration
 
-- Controller is running on Windows in PyCharm while I'm testing. I'll move it to RHEL when I'm done.
+- Controller is running on Windows in PyCharm while I'm testing.
 - I am using a S4112F-ON
 - I am using a Ryu OpenFlow controller
 
@@ -27,43 +19,16 @@
     Architecture: x86_64
     Up Time: 00:03:52
 
+### Python Version
+
+    C:\Users\grant\Documents\dummycontroller>python --version
+    Python 3.7.0
+
 ## Setup
 
 ### Setup Controller
 
     pip install requirements.txt
-
-### On Host Workstation
-
-** Make sure you use `sudo` or things will go wrong **
-
-    curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-    sudo npm install -g @angular/cli
-    sudo ng add @angular/material
-
-To setup debugging do the following:
-
-1. Go to https://marketplace.visualstudio.com/items?itemName=msjsdiag.debugger-for-chrome and install the addon for Visual Studio Code
-2. Go to the debugging tab in Visual Studio code, hit the down arrow next to launch program and click launch Chrome.
-3. I used the following configuration:
-
-        {
-            // Use IntelliSense to learn about possible attributes.
-            // Hover to view descriptions of existing attributes.
-            // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-            "version": "0.2.0",
-            "configurations": [
-                {
-                    "type": "chrome",
-                    "request": "launch",
-                    "name": "Launch Chrome against localhost",
-                    "url": "http://localhost:4200",
-                    "webRoot": "c:\\Users\\grant\\Documents\\trafficshaper\\angular"
-                }
-            ]
-        }
-
 
 ### Setup OpenFlow on the Switch
 
@@ -94,48 +59,53 @@ On the switch run:
 
 ## Running the Code
 
-To run the code there is an application called `ryu-manager`. To run the code 
-you have to run `ryu-manager main.py`.
+Run `python main.py`
 
-## Supported Protocols
+### ** WARNING **
 
-- TCP
-- UDP
-- ICMP
+I hard coded the in_ports for the dummy flows in lines 159 and 167. On the 4112F-ON
+I have in_ports 5 and 9 are present. Depending on the switch you test, that may or
+may not be the case for you. You'll have to update them if those ports aren't present.
+If you don't you'll get a BAD_VALUE rejection message from OFPT_FLOW_MOD.
 
-## Helpful Commands
+## Seeing the bug:
 
+The flow timeouts are set in lines 175-181:
 
+        # Finally, 0 (lowest) is specified for priority and the add_flow() method is executed to send the Flow Mod
+        # message. The content of the add_flow() method is explained in a later section.
+        add_flow(datapath, 0, match, actions, 0, 0)
 
-## Personal Notes
+        # Add two flows with very low timeouts to illustrate the problem.
+        add_flow(datapath, 2, match_in, actions, 5, 5)
+        add_flow(datapath, 2, match_out, actions, 5, 5)
 
-### Things We Want
+They are the last argument to `add_flow`. The first is the the default flow for
+the controller so it is set to infinity. The other two are set to five seconds
+both for idle timeout and for hard timeout.
 
-#### Protocols
+Before running the program, fire up Wireshark and set the filter to `openflow_v4`
+Then go and check the switch with `openflow show flows` and verify that no flows
+are present. I have written the code to delete any existing flows as the controller
+starts up so each time you do this it will be a clean run.
 
-HTTP
-TLS
-DNS
-SSH
+Once you run `main.py` the flows should be present for 5 seconds right after
+the controller connects. After that they will disappear again. Start your
+capture on Wireshark and then run `main.py`. You'll see the OFPT_FLOW_MOD messages
+go out to add the flows. **Make sure you do not see an OFPT REJECT message. This
+might be an indicator that you need to update the in_ports**. You can see in Wireshark
+that you never go a [flow expiration message](https://ryu.readthedocs.io/en/latest/ofproto_v1_3_ref.html#flow-removed-message) as would be expected.
 
-#### Use Cases
+![](./images/results.JPG)
 
-- I want to tie a sensor directly to a DC. So all things for that DC go to one sensor
+I have included an EventOFPFlowRemoved handler for experimentation starting on line 184.
 
-A couple of dropdown boxes in a statement and an execute button.
-One of those things could be an IP address, or a port, or a protocol, physical port
+## Bug 2
 
-問題答案
-我需要用：`terminal monitor` 
-`logging console severity log-debug`
+This is not part of tihs thread, but this is another bug I've been meaning to submit.
 
-## Random Programming Thoughts
+https://stackoverflow.com/questions/61082548/python-openflow-ryu-breaks-the-frame-check-sequence
 
-- 它只會詢問流中的第一個封包。
-- 我可以使用混合模式。
-
-## 問題
-
-看起來交換器不發送Expire messages
-我的層2的問題 - 我忘了這是什麽！
-我需要處理我們失去了聯係的情況。
+At first I thought it was Ryu. I don't think it is - I'm pretty sure it's the behavior
+or our switch. When you forward a flow it isn't computing the frame check sequence
+correctly so the downstream devices go nuts.
