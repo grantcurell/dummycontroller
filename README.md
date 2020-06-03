@@ -28,7 +28,7 @@
 
 ### Setup Controller
 
-    pip install requirements.txt
+    pip install -r requirements.txt
 
 ### Setup OpenFlow on the Switch
 
