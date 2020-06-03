@@ -1,7 +1,5 @@
 # Dummy Controller
 
-## Overview
-
 ## My Configuration
 
 - Controller is running on Windows in PyCharm while I'm testing.
@@ -49,7 +47,7 @@ On the switch run:
 #### Configure Management
 
     OS10(conf-if-ma-1/1/1)# interface mgmt 1/1/1
-    OS10(conf-if-ma-1/1/1)# ip address <YOUR_CONTROLLER_IP>/24
+    OS10(conf-if-ma-1/1/1)# ip address <SOME MANAGEMENT IP>/24
     OS10(conf-if-ma-1/1/1)# no shutdown
     OS10(conf-if-ma-1/1/1)# exit
 
@@ -107,7 +105,7 @@ I have included an EventOFPFlowRemoved handler for experimentation starting on l
 
 ## Bug 2
 
-This is not part of tihs thread, but this is another bug I've been meaning to submit.
+This is not part of this thread, but this is another bug I've been meaning to submit.
 
 https://stackoverflow.com/questions/61082548/python-openflow-ryu-breaks-the-frame-check-sequence
 
